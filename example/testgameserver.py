@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-
+import requests
 from tracerobot.decorators import suite, keyword, testcase
 from tracerobot.rt_state import RtState
 from tracerobot.rfw_adapter import RfwAdapter
-import requests
+
 
 @keyword
 def testlog(msg):
     pass
 
-class TestGameServer(object):
+
+class TestGameServer:
     """ Game Server Acceptance Tests """
 
     def __init__(self, url):
         self._url = url
 
     class Login:
-
         @keyword
         def __init__(self, url, user, passw):
             self._url = url

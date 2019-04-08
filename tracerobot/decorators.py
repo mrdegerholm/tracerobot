@@ -1,73 +1,80 @@
-from tracerobot.rt_state import RtState
+from functools import wraps
 
-def suite(fun):
-    def decorator():
-        adapter = RtState.get_adapter()
+import tracerobot
+from tracerobot import utils
 
-        name = fun.__qualname__
-        doc = fun.__doc__
-        suite_info = adapter.start_suite(name, name, doc)
 
-        try:
-            fun()
+def format_exc(exc):
+    if isinstance(exc, AssertionError):
+        return ','.join(str(a) for a in exc.args)
+    else:
+        return repr(exc)
 
-        except Exception as e:
-            msg = repr(e)
-            adapter.end_suite(suite_info, msg)
-            raise
 
-        adapter.end_suite(suite_info)
+def decorator(dec):
+    """Decorator to convert a function into a decorator."""
+    @wraps(dec)
+    def outer(func):
+        @wraps(func)
+        def inner(*args, **kwargs):
+            return dec(func, *args, **kwargs)
+        return inner
+    return outer
 
-    return decorator
 
-def testcase(fun):
-    def decorator(*args, **kwargs):
-        adapter = RtState.get_adapter()
+@decorator
+def suite(func, *args, **kwargs):
+    msg = None
+    name = func.__qualname__
+    doc = func.__doc__
+    info = tracerobot.start_suite(name, name, doc)
 
-        test_info = adapter.start_test_fun(fun, args, kwargs)
+    try:
+        return func(*args, **kwargs)
+    except Exception as e:
+        msg = format_exc(e)
+        raise
+    finally:
+        tracerobot.end_suite(info, msg)
 
-        try:
-            fun(*args, **kwargs)
 
-        except AssertionError as e:
-            msg = str(e.args) if len(e.args) > 1 else str(e.args[0])
-            adapter.end_test(test_info, msg)
-            raise
-        except Exception as e:
-            msg = repr(e)
-            adapter.end_test(test_info, msg)
-            raise
+@decorator
+def testcase(func, *args, **kwargs):
+    msg = None
+    info = tracerobot.start_test_func(func, args, kwargs)
 
-        adapter.end_test(test_info)
+    try:
+        return func(*args, **kwargs)
+    except Exception as e:
+        msg = format_exc(e)
+        raise
+    finally:
+        tracerobot.end_test(info, msg)
 
-    return decorator
 
-def keyword(fun):
-    def decorator(*args, **kwargs):
-        adapter = RtState.get_adapter()
+@decorator
+def keyword(func, *args, **kwargs):
+    ret, msg = None, None
 
-        kw_info = adapter.start_keyword(fun, args, kwargs)
+    name = utils.function_name(func)
+    doc = func.__doc__
+    args_fmt = utils.format_args(args, kwargs)
 
-        try:
-            ret = fun(*args, **kwargs)
+    info = tracerobot.start_keyword(name=name, doc=doc, args=args_fmt)
 
-        except AssertionError as e:
-            msg = str(e.args) if len(e.args) > 1 else str(e.args[0])
-            adapter.end_keyword(kw_info, None, msg)
-            raise
-        except Exception as e:
-            msg = repr(e)
-            adapter.end_keyword(kw_info, None, msg)
-            raise
+    try:
+        ret = func(*args, **kwargs)
+    except Exception as e:
+        msg = format_exc(e)
+        raise
+    finally:
+        tracerobot.end_keyword(info, ret, msg)
 
-        adapter.end_keyword(kw_info, ret)
+    return ret
 
-        return ret
-
-    return decorator
 
 class ClassInitLogger(type):
-    """ Allows logging of  class instantiations i.e. calls to __init__() """
+    """Allows logging of class instantiations, i.e. calls to __init__()"""
     def __new__(mcs, name, bases, dct):
         instance = super().__new__(mcs, name, bases, dct)
         instance.__init__ = keyword(instance.__init__)
@@ -75,11 +82,12 @@ class ClassInitLogger(type):
 
 
 class KeywordClass(metaclass=ClassInitLogger):
-    """ Automatically decorates all non-private member functions as @keyword.
-        Note: this also decorates all non-private sub-classes. """
-    def __getattribute__(self, attr):
-        v = super().__getattribute__(attr)
-        if callable(v) and not v.__name__.startswith("_"):
-            return keyword(v)
+    """Automatically decorates all non-private member functions as @keyword.
+    Note: this also decorates all non-private sub-classes.
+    """
+    def __getattribute__(self, name):
+        attr = super().__getattribute__(name)
+        if callable(attr) and not attr.__name__.startswith('_'):
+            return keyword(attr)
         else:
-            return v
+            return attr
