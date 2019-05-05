@@ -3,7 +3,7 @@ import setuptools
 
 setuptools.setup(
     name="tracerobot",
-    version="0.1.0",
+    version="0.2.0",
     author="Markku Degerholm",
     author_email="markku.degerholm@knowit.fi",
     description="Python execution tracer with Robot Framework compatible output",
