@@ -1,15 +1,13 @@
-import time
-from collections import defaultdict
-from datetime import datetime
-
 from robot.result.model import Message, Keyword, TestCase, TestSuite
 from tracerobot import utils
+from tracerobot import autotracer
 
 
 class RobotAdapter:
     def __init__(self, writer):
         self.writer = writer
         self.parent_suite = None
+        self.tracer = None
 
     def start_suite(self, name, doc='', metadata=None, source=None):
         suite = TestSuite(
@@ -100,3 +98,16 @@ class RobotAdapter:
 
     def log_message(self, msg, level='INFO'):
         self.writer.log_message(Message(msg, level))
+
+    def start_auto_trace(self):
+        self.tracer = autotracer.AutoTracer(self)
+        self.tracer.start()
+
+    def stop_auto_trace(self):
+        if self.tracer:
+            self.tracer.stop()
+        self.tracer = None
+
+    def set_auto_trace_kwtype(self, kwtype):
+        if self.tracer:
+            self.tracer.setkwtype(kwtype)

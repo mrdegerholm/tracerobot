@@ -12,7 +12,10 @@ class Listener:
         'end_suite',
         'end_test',
         'end_keyword',
-        'log_message'
+        'log_message',
+        'start_auto_trace',
+        'stop_auto_trace',
+        'set_auto_trace_kwtype'
     ]
 
     def __init__(self, logfile='output.xml'):
