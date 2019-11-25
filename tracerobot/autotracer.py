@@ -9,7 +9,7 @@ class AutoTracer:
         much earlier than that) and ends to first method that looks like a
         private method or a system lib call. """
 
-    def __init__(self, adapter):
+    def __init__(self, adapter, config):
         self._adapter = adapter
         self._trace_off_depth = 0
         self._log_on_depth = 0
@@ -17,6 +17,12 @@ class AutoTracer:
         self._kw = []
         self._is_exception = False
         self._kwtype = "kw"
+
+        self._trace_privates = config['trace_privates'] if config else False
+        self._trace_libpaths = [ os.getcwd() ]
+
+        if 'trace_libpaths' in config:
+            self._trace_libpaths += (config['trace_libpaths'] or [])
 
     def start(self):
         sys.settrace(self.trace)
@@ -50,16 +56,18 @@ class AutoTracer:
             if is_logged:
                 if not self._log_on_depth:
                     self._log_on_depth = self._depth
+                    self.debug("Trace on at level ", self._log_on_depth)
                 self._trace_off_depth = 0
 
             elif self._log_on_depth > 0:
                 if not self._trace_off_depth:
                     self._trace_off_depth = self._depth
+                self.debug("Trace off at level ", self._trace_off_depth)
 
             if self._is_log_on():
                 args = frame.f_locals
                 args_str = ['{}={!r}'.format(k, v) for k, v in args.items()]
-                self.debug(name, args, self._depth, self._log_on_depth, self._trace_off_depth)
+                self.debug("LOG", name, args, self._depth, self._log_on_depth, self._trace_off_depth)
                 kw = self._adapter.start_keyword(name, type=self._kwtype, args=args_str)
                 self._kw.append(kw)
                 self._kwtype = "kw"
@@ -83,18 +91,21 @@ class AutoTracer:
                 self.debug("return", arg)
                 self._adapter.end_keyword(self._kw.pop(), return_value=str(arg))
 
+            if self._trace_off_depth > 0 and self._depth < self._trace_off_depth:
+                self._trace_off_depth = 0
+
             self._is_exception = False
             self._depth -= 1
 
         return self.trace
 
     def is_func_logged(self, name, path):
-        """ todo: make this configurable to allow tracing of external test libs
-            and special methods. """
-        if name.startswith("_"):
+        #self.debug("is_logged: ", path, name)
+        if not self._trace_privates and name.startswith("_"):
             return False
-        if path.startswith(os.getcwd()):
-            return True
+        for libpath in self._trace_libpaths:
+            if path.startswith(libpath):
+                return True
         return False
 
     def _is_log_on(self):

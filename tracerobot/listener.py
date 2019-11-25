@@ -15,13 +15,18 @@ class Listener:
         'log_message',
         'start_auto_trace',
         'stop_auto_trace',
-        'set_auto_trace_kwtype'
+        'set_auto_trace_kwtype',
+        'get_writer'
     ]
 
-    def __init__(self, logfile='output.xml'):
-        self._settings = {'logfile': logfile}
-        self._adapter = RobotAdapter(None)
+    def __init__(self):
+        self._adapter = None
         self._writer = None
+        self._settings = {
+            "robot_output": "output.xml",
+            "autotrace_privates": False,
+            "autotrace_libpaths": []
+        }
 
     def __getattribute__(self, name):
         # Get attributes using base class to avoid infinite recursion
@@ -34,12 +39,16 @@ class Listener:
         except AttributeError:
             return _getattr(name)
 
-    def configure(self, **kwargs):
-        self._settings.update(kwargs)
-        assert 'logfile' in self._settings, 'Output filename required'
+    def configure(self, settings):
+        self._settings.update(settings)
 
-        self._writer = XmlLogger(self._settings['logfile'])
-        self._adapter.writer = self._writer
+        autotracer_config =  {
+            "trace_privates": settings["autotrace_privates"],
+            "trace_libpaths": settings["autotrace_libpaths"]
+        }
+
+        self._writer = XmlLogger(self._settings['robot_output'])
+        self._adapter = RobotAdapter(self._writer, autotracer_config)
 
     def close(self):
         if self._writer:
@@ -47,3 +56,9 @@ class Listener:
 
         self._writer = None
         self._adapter = None
+
+    def register_to_module_namespace(self, ns_dict):
+        # Allow using listener methods from module root,
+        # e.g. tracerobot.start_suite()
+        for name in self.ACTIONS:
+            ns_dict[name] = getattr(self, name)

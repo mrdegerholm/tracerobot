@@ -4,10 +4,11 @@ from tracerobot import autotracer
 
 
 class RobotAdapter:
-    def __init__(self, writer):
+    def __init__(self, writer, autotracer_cfg=None):
         self.writer = writer
         self.parent_suite = None
         self.tracer = None
+        self._autotracer_cfg = autotracer_cfg
 
     def start_suite(self, name, doc='', metadata=None, source=None):
         suite = TestSuite(
@@ -92,7 +93,8 @@ class RobotAdapter:
             self.log_message(error_msg)
         else:
             keyword.status = 'PASS'
-            self.log_message('Return: ' + str(return_value))
+            if return_value is not None:
+                self.log_message('Return: ' + str(return_value))
 
         self.writer.end_keyword(keyword)
 
@@ -100,7 +102,7 @@ class RobotAdapter:
         self.writer.log_message(Message(msg, level))
 
     def start_auto_trace(self):
-        self.tracer = autotracer.AutoTracer(self)
+        self.tracer = autotracer.AutoTracer(self, self._autotracer_cfg)
         self.tracer.start()
 
     def stop_auto_trace(self):
@@ -111,3 +113,6 @@ class RobotAdapter:
     def set_auto_trace_kwtype(self, kwtype):
         if self.tracer:
             self.tracer.setkwtype(kwtype)
+
+    def get_writer(self):
+        return self.writer

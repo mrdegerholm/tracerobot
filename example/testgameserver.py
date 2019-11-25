@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 import requests
 from tracerobot.decorators import suite, keyword, testcase
-from tracerobot.rt_state import RtState
-from tracerobot.rfw_adapter import RfwAdapter
+from tracerobot.adapter import RobotAdapter
 
 
 @keyword
@@ -54,8 +53,6 @@ def GameServerTestSuite():
     testGameServer.test_valid_creds()
 
 def main():
-    RtState.init()
     GameServerTestSuite()
-    RtState.close()
 
 main()
