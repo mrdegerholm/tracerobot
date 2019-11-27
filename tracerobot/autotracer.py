@@ -62,7 +62,7 @@ class AutoTracer:
             elif self._log_on_depth > 0:
                 if not self._trace_off_depth:
                     self._trace_off_depth = self._depth
-                self.debug("Trace off at level ", self._trace_off_depth)
+                    self.debug("Trace off at level ", self._trace_off_depth)
 
             if self._is_log_on():
                 args = frame.f_locals
@@ -85,6 +85,7 @@ class AutoTracer:
                 self.debug("exception", msg)
                 self._adapter.end_keyword(self._kw.pop(), error_msg=msg)
                 self._is_exception = True
+            self._depth -= 1
 
         elif event == "return":
             if self._is_log_on() and not self._is_exception:

@@ -8,6 +8,7 @@ class RobotAdapter:
         self.writer = writer
         self.parent_suite = None
         self.tracer = None
+        self._kwlevel = 0
         self._autotracer_cfg = autotracer_cfg
 
     def start_suite(self, name, doc='', metadata=None, source=None):
@@ -49,6 +50,8 @@ class RobotAdapter:
             starttime=utils.timestamp()
         )
 
+        self._kwlevel = 0
+
         self.parent_suite.tests.append(test)
         self.writer.start_test(test)
 
@@ -70,6 +73,9 @@ class RobotAdapter:
         args = args or []
         tags = tags or []
 
+        if not self.parent_suite or not self.parent_suite.tests:
+            return None
+
         keyword = Keyword(
             kwname=name,
             libname=libname,
@@ -82,10 +88,19 @@ class RobotAdapter:
 
         self.writer.start_keyword(keyword)
 
+        self._kwlevel += 1
+
         return keyword
 
     def end_keyword(self, keyword, return_value=None, error_msg=None):
+
+        if not keyword or not self.parent_suite or not self.parent_suite.tests:
+            return
+
         keyword.endtime = utils.timestamp()
+
+        self._kwlevel -= 1
+        assert self._kwlevel >= 0
 
         if error_msg:
             keyword.status = 'FAIL'
@@ -99,7 +114,8 @@ class RobotAdapter:
         self.writer.end_keyword(keyword)
 
     def log_message(self, msg, level='INFO'):
-        self.writer.log_message(Message(msg, level))
+        if self.parent_suite and self.parent_suite.tests and self._kwlevel:
+           self.writer.log_message(Message(msg, level))
 
     def start_auto_trace(self):
         self.tracer = autotracer.AutoTracer(self, self._autotracer_cfg)
