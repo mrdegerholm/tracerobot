@@ -68,7 +68,7 @@ class RobotAdapter:
 
         self.writer.end_test(test)
 
-    def start_keyword(self, name, kwtype='kw', libname='', doc='', args=None,
+    def start_keyword(self, name, type='kw', libname='', doc='', args=None,
                       tags=None):
         args = args or []
         tags = tags or []
@@ -82,7 +82,7 @@ class RobotAdapter:
             doc=doc,
             args=args,
             tags=tags,
-            type=kwtype,
+            type=type,
             starttime=utils.timestamp()
         )
 
