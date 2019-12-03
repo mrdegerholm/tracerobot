@@ -39,12 +39,13 @@ class Listener:
         except AttributeError:
             return _getattr(name)
 
-    def configure(self, settings):
-        self._settings.update(settings)
+    def configure(self, settings=None):
+        if settings:
+            self._settings.update(settings)
 
         autotracer_config =  {
-            "trace_privates": settings["autotrace_privates"],
-            "trace_libpaths": settings["autotrace_libpaths"]
+            "trace_privates": self._settings["autotrace_privates"],
+            "trace_libpaths": self._settings["autotrace_libpaths"]
         }
 
         self._writer = XmlLogger(self._settings['robot_output'])
