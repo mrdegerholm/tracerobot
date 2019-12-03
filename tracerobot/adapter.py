@@ -68,7 +68,7 @@ class RobotAdapter:
 
         self.writer.end_test(test)
 
-    def start_keyword(self, name, type='kw', libname='', doc='', args=None,
+    def start_keyword(self, name, kwtype='kw', libname='', doc='', args=None,
                       tags=None):
         args = args or []
         tags = tags or []
@@ -82,7 +82,7 @@ class RobotAdapter:
             doc=doc,
             args=args,
             tags=tags,
-            type=type,
+            type=kwtype,
             starttime=utils.timestamp()
         )
 
@@ -115,7 +115,7 @@ class RobotAdapter:
 
     def log_message(self, msg, level='INFO'):
         if self.parent_suite and self.parent_suite.tests and self._kwlevel:
-           self.writer.log_message(Message(msg, level))
+            self.writer.log_message(Message(msg, level))
 
     def start_auto_trace(self):
         self.tracer = autotracer.AutoTracer(self, self._autotracer_cfg)

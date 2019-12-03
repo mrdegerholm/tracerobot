@@ -1,3 +1,6 @@
+
+#pylint: disable=too-many-instance-attributes,no-else-return,too-many-branches
+
 import sys
 import os
 import tracerobot.utils
@@ -19,7 +22,7 @@ class AutoTracer:
         self._kwtype = "kw"
 
         self._trace_privates = config['trace_privates'] if config else False
-        self._trace_libpaths = [ os.getcwd() ]
+        self._trace_libpaths = [os.getcwd()]
 
         if 'trace_libpaths' in config:
             self._trace_libpaths += (config['trace_libpaths'] or [])
@@ -67,7 +70,9 @@ class AutoTracer:
             if self._is_log_on():
                 args = frame.f_locals
                 args_str = ['{}={!r}'.format(k, v) for k, v in args.items()]
-                self.debug("LOG", name, args, self._depth, self._log_on_depth, self._trace_off_depth)
+                self.debug(
+                    "LOG", name, args,
+                    self._depth, self._log_on_depth, self._trace_off_depth)
                 kw = self._adapter.start_keyword(name, type=self._kwtype, args=args_str)
                 self._kw.append(kw)
                 self._kwtype = "kw"

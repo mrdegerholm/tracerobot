@@ -1,7 +1,9 @@
+
+#pylint: disable=no-else-return
+
 from contextlib import contextmanager
 from datetime import datetime
 import traceback
-
 
 @contextmanager
 def catch_exc():
@@ -34,7 +36,6 @@ def instance(func):
 
 
 def timestamp():
-    # TODO: Can probably be replaced with robot in-built utils
     return datetime.now().strftime('%Y%m%d %H:%M:%S.%f')[0:-3]
 
 

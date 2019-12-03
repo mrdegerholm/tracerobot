@@ -43,7 +43,7 @@ class Listener:
         if settings:
             self._settings.update(settings)
 
-        autotracer_config =  {
+        autotracer_config = {
             "trace_privates": self._settings["autotrace_privates"],
             "trace_libpaths": self._settings["autotrace_libpaths"]
         }
