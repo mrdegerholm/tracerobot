@@ -35,7 +35,7 @@ def instance(func):
 
 def timestamp():
     # TODO: Can probably be replaced with robot in-built utils
-    return datetime.now().strftime('%Y%m%d %H:%M:%S.%f')
+    return datetime.now().strftime('%Y%m%d %H:%M:%S.%f')[0:-3]
 
 
 def format_args(*args, **kwargs):
