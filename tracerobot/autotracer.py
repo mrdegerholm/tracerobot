@@ -4,6 +4,7 @@
 import sys
 import os
 import tracerobot.utils
+import traceback
 
 class AutoTracer:
     """ This class implements a python call tracer that can provides "keyword"
@@ -14,20 +15,23 @@ class AutoTracer:
 
     def __init__(self, adapter, config):
         self._adapter = adapter
-        self._trace_off_depth = 0
-        self._log_on_depth = 0
         self._depth = 0
-        self._kw = []
-        self._is_exception = False
+        self._ctx = []
         self._kwtype = "kw"
+        self._is_exc_handled = False
 
         self._trace_privates = config['trace_privates'] if config else False
         self._trace_libpaths = [os.getcwd()]
+        self._trace_silentpaths = []
 
         if 'trace_libpaths' in config:
             self._trace_libpaths += (config['trace_libpaths'] or [])
 
+        if 'trace_silentpaths' in config:
+            self._trace_silentpaths += (config['trace_silentpaths'] or [])
+
     def start(self):
+        self._ctx = []
         sys.settrace(self.trace)
 
     def stop(self):
@@ -36,85 +40,135 @@ class AutoTracer:
     def setkwtype(self, kwtype):
         self._kwtype = kwtype
 
-    def debug(self, *args):
-        #print("".ljust(self._depth), self._depth, ':', *args)
-        pass
+    class DummyCtx:
+        def __init__(self):
+            pass
+
+        def handle_exc(self, arg, is_original):
+            pass
+
+        def finish(self, arg):
+            pass
+
+        def is_in_scope(self):
+            return False
+
+
+    class TraceCtx:
+
+        @staticmethod
+        def _format_arg(args, locals, i):
+            arg = args[i]
+            value = locals[arg]
+            return '{}={!r}'.format(arg, value)
+
+        def __init__(self, tracer, kwtype, frame, in_scope, is_external):
+            self._tracer = tracer
+            self._depth = tracer._depth
+            self._kwtype = kwtype
+            self._is_in_scope = in_scope
+
+            self._kw = None
+            self._name = frame.f_code.co_name
+
+            args = frame.f_code.co_varnames
+            locals = frame.f_locals
+            self.debug(args, locals)
+
+            args_str = [ self._format_arg(args, locals, i) for i in range(frame.f_code.co_argcount)]
+
+            self.debug("LOG", args)
+            name = self._name if not is_external else (
+                frame.f_code.co_filename + ":" +
+                str(frame.f_code.co_firstlineno) + ":" +
+                self._name)
+            self._kw = self._tracer._adapter.start_keyword(
+                name, type=self._kwtype, args=args_str)
+
+        def handle_exc(self, arg, is_original):
+            (exception, value, tb) = arg
+            (exc_source, msg) = tracerobot.utils.format_exc(exception, value, tb)
+
+            self.debug("EXC", msg)
+
+            if is_original:
+                exc_kw = tracerobot.start_keyword(exc_source)
+                tracerobot.end_keyword(exc_kw, error_msg = msg)
+
+            self._tracer._adapter.end_keyword(self._kw, error_msg=msg)
+            self._kw = None
+
+        def finish(self, arg):
+            self.debug("RET")
+            if self._kw:
+                self._tracer._adapter.end_keyword(self._kw, return_value=str(arg))
+
+        def is_in_scope(self):
+            return self._is_in_scope
+
+        def debug(self, *args):
+            if False:   # Set to True to enable tracer debugging
+                sys.settrace(None)
+                depth = self._tracer._depth
+                print("".ljust(depth), depth, ":", self._name, ":", *args)
+                sys.settrace(self._tracer.trace)
 
     def trace(self, frame, event, arg):
-
-        if self._log_on_depth > 0 and self._depth < self._log_on_depth:
-            self._log_on_depth = 0
 
         if event == "call":
 
             self._depth += 1
 
-            if self._trace_off_depth > 0 and self._depth >= self._trace_off_depth:
-                return self.trace
-
             name = frame.f_code.co_name
-            file = frame.f_code.co_filename
+            path = frame.f_code.co_filename
 
-            is_logged = self.is_func_logged(name, file)
-            if is_logged:
-                if not self._log_on_depth:
-                    self._log_on_depth = self._depth
-                    self.debug("Trace on at level ", self._log_on_depth)
-                self._trace_off_depth = 0
-
-            elif self._log_on_depth > 0:
-                if not self._trace_off_depth:
-                    self._trace_off_depth = self._depth
-                    self.debug("Trace off at level ", self._trace_off_depth)
-
-            if self._is_log_on():
-                args = frame.f_locals
-                args_str = ['{}={!r}'.format(k, v) for k, v in args.items()]
-                self.debug(
-                    "LOG", name, args,
-                    self._depth, self._log_on_depth, self._trace_off_depth)
-                kw = self._adapter.start_keyword(name, type=self._kwtype, args=args_str)
-                self._kw.append(kw)
+            (in_scope, is_external, is_silent) = self.is_func_logged(name, path)
+            if not is_silent and (in_scope or self.is_log_children()):
+                ctx = AutoTracer.TraceCtx(
+                        self, self._kwtype, frame, in_scope, is_external)
                 self._kwtype = "kw"
+            else:
+                ctx = AutoTracer.DummyCtx()
 
-            # Note: python docs say that the tracer function can return
-            # an another tracer function instance here for the sub-scope
-            # but it doesn't seem to be working like that in reality
-            # (such sub-tracer was ignored when tried)
-            return self.trace
+            self._ctx.append(ctx)
+
+            self._is_exc_handled = False
 
         elif event == "exception":
-            if self._is_log_on():
-                (exception, value, tb) = arg
-                msg = tracerobot.utils.format_exc(exception, value, tb)
-                self.debug("exception", msg)
-                self._adapter.end_keyword(self._kw.pop(), error_msg=msg)
-                self._is_exception = True
-            self._depth -= 1
+            self._ctx[-1].handle_exc(arg, not self._is_exc_handled)
+            self._is_exc_handled = True
+            # for exceptions, exception event is handled first and then
+            # return event
 
         elif event == "return":
-            if self._is_log_on() and not self._is_exception:
-                self.debug("return", arg)
-                self._adapter.end_keyword(self._kw.pop(), return_value=str(arg))
-
-            if self._trace_off_depth > 0 and self._depth < self._trace_off_depth:
-                self._trace_off_depth = 0
-
-            self._is_exception = False
+            self._ctx[-1].finish(arg)
+            self._ctx.pop()
             self._depth -= 1
+
+        assert self._depth >= 0
+
+        # Note: python docs say that the tracer function can return
+        # an another tracer function instance here for the sub-scope
+        # but it doesn't seem to be working like that in reality
+        # (such sub-tracer was ignored when tried)
 
         return self.trace
 
     def is_func_logged(self, name, path):
-        #self.debug("is_logged: ", path, name)
+        """ Returns tuple (in_scope, is_external, is_silent) """
+
+        for libpath in self._trace_silentpaths:
+            if path.startswith(libpath):
+                return (False, False, True)
+
         if not self._trace_privates and name.startswith("_"):
-            return False
+            return (False, False, False)
+
         for libpath in self._trace_libpaths:
             if path.startswith(libpath):
-                return True
-        return False
+                return (True, False, False)
 
-    def _is_log_on(self):
-        log_on = self._log_on_depth > 0 and self._depth >= self._log_on_depth
-        trace_off = self._trace_off_depth > 0 and self._depth >= self._trace_off_depth
-        return log_on and not trace_off
+        return (False, True, False)
+
+    def is_log_children(self):
+        return self._ctx and self._ctx[-1].is_in_scope()

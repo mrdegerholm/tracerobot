@@ -25,7 +25,8 @@ class Listener:
         self._settings = {
             "robot_output": "output.xml",
             "autotrace_privates": False,
-            "autotrace_libpaths": []
+            "autotrace_libpaths": [],
+            "autotrace_silentpaths": [],
         }
 
     def __getattribute__(self, name):
@@ -44,8 +45,9 @@ class Listener:
             self._settings.update(settings)
 
         autotracer_config = {
-            "trace_privates": self._settings["autotrace_privates"],
-            "trace_libpaths": self._settings["autotrace_libpaths"]
+            "trace_privates":       self._settings["autotrace_privates"],
+            "trace_libpaths":       self._settings["autotrace_libpaths"],
+            "trace_silentpaths":    self._settings["autotrace_silentpaths"]
         }
 
         self._writer = XmlLogger(self._settings['robot_output'])

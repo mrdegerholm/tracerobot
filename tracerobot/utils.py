@@ -4,6 +4,7 @@
 from contextlib import contextmanager
 from datetime import datetime
 import traceback
+import os.path
 
 @contextmanager
 def catch_exc():
@@ -45,7 +46,16 @@ def format_args(*args, **kwargs):
 
 def format_exc(exc, value, tb):
     stack_summary = traceback.extract_tb(tb)
+
+    frame0 = stack_summary[0]
+    exc_class_name = value.__class__.__name__
+    exc_file = os.path.basename(frame0.filename)
+    exc_source = exc_file + ":" + str(frame0.lineno) + ": " + exc_class_name
+
     frames = traceback.format_list(stack_summary)
-    #msg = frames[-1] + "\n" + call.excinfo.exconly()
-    msg = str(frames[-1]) + "\n" + str(traceback.format_exception_only(exc, value))
-    return msg
+    msg = ""
+    if frames:
+        msg = str(frames[-1]) + "\n"
+    msg += str(traceback.format_exception_only(exc, value))
+
+    return (exc_source, msg)
