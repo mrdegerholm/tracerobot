@@ -7,15 +7,17 @@ compatible trace log (XML) of the instrumented tests. The generated XML log
 can be then converted into a human-friendly log and report HTML pages.
 
 TraceRobot module is meant to be used with pytest-tracerobot, which is a
-plugin for the well-known Pytest framework.
+plugin for the well-known Pytest framework. TraceRobot and pytest-tracerobot
+are separate python modules for historical reasons, and will be probably
+merged at some point.
 
-TraceRobot is a separate python module for historical reasons, and will be
-probably merged to pytest-tracerobot module at some point.
+So, in order to use TraceRobot, also check:
+https://github.com/mrdegerholm/pytest-tracerobot
 
 ## Prerequisites
 
 TraceRobot needs Python 3.6 or higher, PyPi (pip3) and Robot Framework installed.
-TraceRobot is tested with Python 3.6.8 and Robot Framework 3.1.1.
+TraceRobot is tested with Python 3.6.9 and Robot Framework 3.2b2.
 
 ## Installation
 

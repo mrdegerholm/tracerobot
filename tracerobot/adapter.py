@@ -73,7 +73,7 @@ class RobotAdapter:
         args = args or []
         tags = tags or []
 
-        if not self.parent_suite or not self.parent_suite.tests:
+        if not self.parent_suite:
             return None
 
         keyword = Keyword(
@@ -94,7 +94,7 @@ class RobotAdapter:
 
     def end_keyword(self, keyword, return_value=None, error_msg=None):
 
-        if not keyword or not self.parent_suite or not self.parent_suite.tests:
+        if not keyword or not self.parent_suite:
             return
 
         keyword.endtime = utils.timestamp()
@@ -127,8 +127,9 @@ class RobotAdapter:
         self.tracer = None
 
     def set_auto_trace_kwtype(self, kwtype):
-        if self.tracer:
-            self.tracer.setkwtype(kwtype)
+        assert self.tracer
+        self.tracer.setkwtype(kwtype)
+
 
     def get_writer(self):
         return self.writer

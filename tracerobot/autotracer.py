@@ -73,11 +73,10 @@ class AutoTracer:
 
             args = frame.f_code.co_varnames
             locals = frame.f_locals
-            self.debug(args, locals)
 
             args_str = [ self._format_arg(args, locals, i) for i in range(frame.f_code.co_argcount)]
 
-            self.debug("LOG", args)
+            self.debug("LOG", self._kwtype, args_str)
             name = self._name if not is_external else (
                 frame.f_code.co_filename + ":" +
                 str(frame.f_code.co_firstlineno) + ":" +
@@ -93,7 +92,7 @@ class AutoTracer:
 
             if is_original:
                 exc_kw = tracerobot.start_keyword(exc_source)
-                tracerobot.end_keyword(exc_kw, error_msg = msg)
+                tracerobot.end_keyword(exc_kw, error_msg=msg)
 
             self._tracer._adapter.end_keyword(self._kw, error_msg=msg)
             self._kw = None
