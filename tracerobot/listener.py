@@ -1,7 +1,6 @@
 from robot.output.xmllogger import XmlLogger
 from tracerobot.adapter import RobotAdapter
 
-
 class Listener:
     ACTIONS = [
         'configure',
@@ -13,9 +12,6 @@ class Listener:
         'end_test',
         'end_keyword',
         'log_message',
-        'start_auto_trace',
-        'stop_auto_trace',
-        'set_auto_trace_kwtype',
         'get_writer'
     ]
 
@@ -23,10 +19,7 @@ class Listener:
         self._adapter = None
         self._writer = None
         self._settings = {
-            "robot_output": "output.xml",
-            "autotrace_privates": False,
-            "autotrace_libpaths": [],
-            "autotrace_silentpaths": [],
+            "robot_output": "output.xml"
         }
 
     def __getattribute__(self, name):
@@ -44,14 +37,9 @@ class Listener:
         if settings:
             self._settings.update(settings)
 
-        autotracer_config = {
-            "trace_privates":       self._settings["autotrace_privates"],
-            "trace_libpaths":       self._settings["autotrace_libpaths"],
-            "trace_silentpaths":    self._settings["autotrace_silentpaths"]
-        }
-
-        self._writer = XmlLogger(self._settings['robot_output'])
-        self._adapter = RobotAdapter(self._writer, autotracer_config)
+        xml_writer = XmlLogger(self._settings['robot_output'])
+        self._writer = xml_writer
+        self._adapter = RobotAdapter(self._writer)
 
     def close(self):
         if self._writer:
